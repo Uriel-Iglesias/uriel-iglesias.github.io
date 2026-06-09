@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Sistema de diseño — espejo de tailwind.config.js para uso en CSS crudo */
+  --bg: #f2f2f7;
+  --card: #ffffff;
+  --dark: #1c1c1e;
+  --green: #34c759;
+  --red: #ff3b30;
+  --blue: #007aff;
+  --ink: #000000;
+  --ink2: #8e8e93;
+  --sep: #e5e5ea;
+
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui,
+      'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Evita el "rubber-band" blanco al hacer overscroll en iOS */
+    overscroll-behavior-y: none;
+  }
+
+  /* Inputs sin estilos nativos raros en iOS */
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    -webkit-appearance: none;
+    appearance: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  /* Safe areas (notch / Dynamic Island / home indicator) */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .h-safe-top {
+    height: env(safe-area-inset-top);
+  }
+
+  /* Oculta scrollbars manteniendo el scroll (chips horizontales, etc.) */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Scroll suave estilo iOS dentro de los sheets */
+  .ios-scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Empuje a GPU para animaciones de los sheets */
+  .gpu {
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+  }
+
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
