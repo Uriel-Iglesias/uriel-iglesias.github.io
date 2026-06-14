@@ -100,4 +100,15 @@
     -webkit-user-select: none;
     user-select: none;
   }
+
+  /* Altura de viewport con fallback: dvh (dinámico) gana donde se soporta, vh si no.
+     En una sola regla el orden de cascada es fiable (no depende del orden de clases). */
+  .app-vh {
+    height: 100vh;
+    height: 100dvh;
+  }
+  .sheet-maxh {
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
 }

@@ -86,7 +86,7 @@ export default function Export() {
         </div>
       </header>
 
-      <main className="flex-1 space-y-3.5 px-5 pb-12 pt-3.5">
+      <main className="flex-1 space-y-3.5 px-5 pb-[calc(env(safe-area-inset-bottom)+32px)] pt-3.5">
         <p className="text-[14px] text-ink2">
           Descarga tus movimientos en formato CSV, compatible con Excel y Hojas de
           cálculo. Ideal para guardar una copia o analizar tus finanzas con más

@@ -38,7 +38,7 @@ export default function Stats() {
         </div>
       </header>
 
-      <main className="flex-1 space-y-3.5 px-5 pb-12 pt-3.5">
+      <main className="flex-1 space-y-3.5 px-5 pb-[calc(env(safe-area-inset-bottom)+32px)] pt-3.5">
         {/* Selector de mes */}
         <div className="flex items-center justify-between rounded-18 bg-card px-2 py-2 shadow-card">
           <ArrowButton dir="left" onClick={() => shift(-1)} />

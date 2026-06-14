@@ -83,7 +83,7 @@ export default function Sheet({ open, onClose, children, ariaLabel }: SheetProps
 
       {/* Sheet */}
       <div
-        className="gpu no-select absolute inset-x-0 bottom-0 flex max-h-[92vh] max-h-[92dvh] flex-col rounded-t-22 bg-card shadow-sheet"
+        className="gpu no-select sheet-maxh absolute inset-x-0 bottom-0 flex flex-col rounded-t-22 bg-card shadow-sheet"
         style={{
           transform: shown ? 'translate3d(0,0,0)' : 'translate3d(0,100%,0)',
           transition: 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)',

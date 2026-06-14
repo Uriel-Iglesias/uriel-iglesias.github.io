@@ -8,8 +8,15 @@ export interface TransactionsStore {
   /** Operaciones pendientes de sincronizar con Supabase (0 en modo local). */
   pending: number
   add: (input: NewTransaction) => Promise<Transaction>
+  update: (id: string, data: NewTransaction) => Promise<void>
   remove: (id: string) => Promise<void>
+  restore: (tx: Transaction) => Promise<void>
   refresh: () => Promise<void>
+}
+
+const byDateDesc = (a: Transaction, b: Transaction) => {
+  if (a.date !== b.date) return a.date < b.date ? 1 : -1
+  return a.created_at < b.created_at ? 1 : -1
 }
 
 /**
@@ -84,14 +91,21 @@ export function useTransactions(userId: string | null): TransactionsStore {
     async (input) => {
       const uid = userIdRef.current ?? 'local-user'
       const tx = await db.addTransaction(uid, input)
-      setTransactions((prev) =>
-        [tx, ...prev].sort((a, b) => {
-          if (a.date !== b.date) return a.date < b.date ? 1 : -1
-          return a.created_at < b.created_at ? 1 : -1
-        }),
-      )
+      setTransactions((prev) => [tx, ...prev].sort(byDateDesc))
       syncPending()
       return tx
+    },
+    [syncPending],
+  )
+
+  const update = useCallback<TransactionsStore['update']>(
+    async (id, data) => {
+      const uid = userIdRef.current ?? 'local-user'
+      const updated = await db.updateTransaction(uid, id, data)
+      if (updated) {
+        setTransactions((prev) => prev.map((t) => (t.id === id ? updated : t)).sort(byDateDesc))
+      }
+      syncPending()
     },
     [syncPending],
   )
@@ -106,5 +120,15 @@ export function useTransactions(userId: string | null): TransactionsStore {
     [syncPending],
   )
 
-  return { transactions, loading, pending, add, remove, refresh }
+  const restore = useCallback<TransactionsStore['restore']>(
+    async (tx) => {
+      const uid = userIdRef.current ?? 'local-user'
+      await db.restoreTransaction(uid, tx)
+      setTransactions((prev) => [tx, ...prev.filter((t) => t.id !== tx.id)].sort(byDateDesc))
+      syncPending()
+    },
+    [syncPending],
+  )
+
+  return { transactions, loading, pending, add, update, remove, restore, refresh }
 }

@@ -213,6 +213,68 @@ export async function deleteTransaction(userId: string, id: string): Promise<voi
   }
 }
 
+/** Campos editables de un movimiento. */
+export type TxPatch = Partial<Pick<Transaction, 'type' | 'amount' | 'category' | 'description' | 'date'>>
+
+/** Edita un movimiento (optimista). Devuelve la versión actualizada o null si no existe. */
+export async function updateTransaction(
+  userId: string,
+  id: string,
+  patch: TxPatch,
+): Promise<Transaction | null> {
+  const list = readCache(userId)
+  const idx = list.findIndex((t) => t.id === id)
+  if (idx === -1) return null
+  const updated: Transaction = { ...list[idx], ...patch }
+  const next = [...list]
+  next[idx] = updated
+  writeCache(userId, sortDesc(next))
+
+  if (supabaseEnabled && supabase) {
+    // Si la fila aún está pendiente de insertar (offline), actualiza ese insert encolado.
+    const ob = readOutbox(userId)
+    const insIdx = ob.findIndex((o) => o.kind === 'insert' && o.tx.id === id)
+    if (insIdx !== -1) {
+      ob[insIdx] = { kind: 'insert', tx: updated }
+      writeOutbox(userId, ob)
+      return updated
+    }
+    // upsert es idempotente: sobrescribe la fila por su id (sirve como update).
+    if (isOnline()) {
+      void (async () => {
+        try {
+          const { error } = await supabase.from(TABLE).upsert(updated)
+          if (error) enqueue(userId, { kind: 'insert', tx: updated })
+        } catch {
+          enqueue(userId, { kind: 'insert', tx: updated })
+        }
+      })()
+    } else {
+      enqueue(userId, { kind: 'insert', tx: updated })
+    }
+  }
+  return updated
+}
+
+/** Restaura un movimiento completo (para "deshacer" un borrado), conservando id y fecha. */
+export async function restoreTransaction(userId: string, tx: Transaction): Promise<void> {
+  writeCache(userId, sortDesc([tx, ...readCache(userId).filter((t) => t.id !== tx.id)]))
+  if (supabaseEnabled && supabase) {
+    if (isOnline()) {
+      void (async () => {
+        try {
+          const { error } = await supabase.from(TABLE).upsert(tx)
+          if (error) enqueue(userId, { kind: 'insert', tx })
+        } catch {
+          enqueue(userId, { kind: 'insert', tx })
+        }
+      })()
+    } else {
+      enqueue(userId, { kind: 'insert', tx })
+    }
+  }
+}
+
 /** Intenta enviar todas las operaciones pendientes. Silencioso si no hay red. */
 export async function flushOutbox(userId: string): Promise<void> {
   if (!supabaseEnabled || !supabase || !isOnline()) return

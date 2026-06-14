@@ -8,6 +8,7 @@ interface DetailSheetProps {
   open: boolean
   transaction: Transaction | null
   onClose: () => void
+  onEdit: () => void
   onDelete: (id: string) => void | Promise<void>
 }
 
@@ -16,7 +17,7 @@ interface DetailSheetProps {
  * Conserva la última transacción no nula (`shown`) para no parpadear mientras
  * el sheet anima su salida (en ese momento `transaction` ya puede ser null).
  */
-export default function DetailSheet({ open, transaction, onClose, onDelete }: DetailSheetProps) {
+export default function DetailSheet({ open, transaction, onClose, onEdit, onDelete }: DetailSheetProps) {
   const [shown, setShown] = useState<Transaction | null>(transaction)
 
   useEffect(() => {
@@ -58,7 +59,14 @@ export default function DetailSheet({ open, transaction, onClose, onDelete }: De
             <Field label="Tipo" value={tx.type === 'income' ? 'Ingreso' : 'Gasto'} />
           </div>
 
-          {/* Eliminar */}
+          {/* Acciones */}
+          <button
+            type="button"
+            onClick={onEdit}
+            className="h-[52px] w-full rounded-18 bg-blue/10 font-semibold text-blue transition-colors active:bg-blue/20"
+          >
+            Editar
+          </button>
           <button
             type="button"
             onClick={async () => {

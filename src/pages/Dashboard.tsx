@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context'
 import type { Filter, Transaction, TransactionType } from '../types'
@@ -16,7 +16,24 @@ export default function Dashboard() {
 
   const [filter, setFilter] = useState<Filter>('all')
   const [addType, setAddType] = useState<TransactionType | null>(null)
+  const [editing, setEditing] = useState<Transaction | null>(null)
   const [selected, setSelected] = useState<Transaction | null>(null)
+  const [undo, setUndo] = useState<Transaction | null>(null)
+  const undoTimer = useRef<ReturnType<typeof setTimeout>>()
+
+  // Limpia el temporizador del "deshacer" al desmontar.
+  useEffect(() => () => clearTimeout(undoTimer.current), [])
+
+  const closeAdd = () => {
+    setAddType(null)
+    setEditing(null)
+  }
+
+  const showUndo = (deleted: Transaction) => {
+    clearTimeout(undoTimer.current)
+    setUndo(deleted)
+    undoTimer.current = setTimeout(() => setUndo(null), 5000)
+  }
 
   const now = new Date()
   const year = now.getFullYear()
@@ -36,13 +53,15 @@ export default function Dashboard() {
   }, [tx.transactions, filter, year, month])
 
   return (
-    <div className="flex min-h-full flex-col bg-bg">
-      {/* Header sticky con blur */}
-      <header className="sticky top-0 z-30 border-b border-sep/60 bg-bg/80 px-5 pb-3 pt-safe backdrop-blur-xl">
+    // Altura de viewport dinámica (dvh): la barra inferior queda SIEMPRE dentro del
+    // área visible, por encima de la barra de Safari, así que siempre es pulsable.
+    <div className="app-vh relative flex flex-col overflow-hidden bg-bg">
+      {/* Header con blur */}
+      <header className="z-30 shrink-0 border-b border-sep/60 bg-bg/80 px-5 pb-3 pt-safe backdrop-blur-xl">
         <div className="flex items-end justify-between pt-2.5">
           <div>
             <h1 className="text-[26px] font-bold leading-tight tracking-tight">💰 Finanzas</h1>
-            <p className="mt-0.5 text-[13px] capitalize text-ink2">{formatLongDate(now)}</p>
+            <p className="mt-0.5 text-[13px] first-letter:uppercase text-ink2">{formatLongDate(now)}</p>
           </div>
           <div className="flex items-center gap-2">
             {tx.pending > 0 && (
@@ -60,8 +79,8 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Contenido */}
-      <main className="flex-1 space-y-3.5 px-5 pb-36 pt-3.5">
+      {/* Contenido (área scrollable entre header y barra) */}
+      <main className="ios-scroll flex-1 space-y-3.5 overflow-y-auto px-5 pb-6 pt-3.5">
         <BalanceCard balance={balance} totalIncome={totalIncome} totalExpense={totalExpense} />
         <MonthStats income={monthIncome} expense={monthExpense} />
 
@@ -76,8 +95,8 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* Barra inferior fija */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-sep/60 bg-bg/90 px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur-xl">
+      {/* Barra inferior (en el flujo, siempre visible dentro del dvh) */}
+      <nav className="z-40 shrink-0 border-t border-sep/60 bg-bg/90 px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur-xl">
         <div className="flex gap-3">
           <ActionButton color="green" onClick={() => setAddType('income')}>
             ＋ Ingreso
@@ -88,23 +107,52 @@ export default function Dashboard() {
         </div>
       </nav>
 
+      {/* Toast "Deshacer" tras borrar */}
+      {undo && (
+        <div className="absolute inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+82px)] z-[45] flex items-center justify-between rounded-14 bg-dark px-4 py-3 text-white shadow-sheet">
+          <span className="text-[14px]">Movimiento eliminado</span>
+          <button
+            type="button"
+            onClick={async () => {
+              const t = undo
+              clearTimeout(undoTimer.current)
+              setUndo(null)
+              await tx.restore(t)
+            }}
+            className="text-[14px] font-semibold text-green-vivid active:opacity-70"
+          >
+            Deshacer
+          </button>
+        </div>
+      )}
+
       {/* Sheets */}
       <AddSheet
         open={addType !== null}
         type={addType ?? 'expense'}
-        onClose={() => setAddType(null)}
+        editing={editing}
+        onClose={closeAdd}
         onSave={async (input) => {
-          await tx.add(input)
-          setAddType(null)
+          if (editing) await tx.update(editing.id, input)
+          else await tx.add(input)
+          closeAdd()
         }}
       />
       <DetailSheet
         open={selected !== null}
         transaction={selected}
         onClose={() => setSelected(null)}
+        onEdit={() => {
+          if (!selected) return
+          setEditing(selected)
+          setAddType(selected.type)
+          setSelected(null)
+        }}
         onDelete={async (id) => {
+          const deleted = selected
           await tx.remove(id)
           setSelected(null)
+          if (deleted) showUndo(deleted)
         }}
       />
     </div>

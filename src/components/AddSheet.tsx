@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Category, NewTransaction, TransactionType } from '../types'
+import type { Category, NewTransaction, Transaction, TransactionType } from '../types'
 import { categoriesFor } from '../lib/categories'
 import { todayISO } from '../lib/utils'
 import Sheet from './Sheet'
@@ -8,12 +8,14 @@ import CategoryGrid from './CategoryGrid'
 interface AddSheetProps {
   open: boolean
   type: TransactionType
+  /** Si se pasa, el sheet entra en modo edición (pre-rellenado). */
+  editing?: Transaction | null
   onClose: () => void
   onSave: (t: NewTransaction) => void | Promise<void>
 }
 
-/** Sheet para añadir un movimiento (máximo 2 toques para guardar). */
-export default function AddSheet({ open, type, onClose, onSave }: AddSheetProps) {
+/** Sheet para añadir o editar un movimiento (máximo 2 toques para guardar). */
+export default function AddSheet({ open, type, editing, onClose, onSave }: AddSheetProps) {
   const [kind, setKind] = useState<TransactionType>(type)
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(null)
@@ -21,16 +23,24 @@ export default function AddSheet({ open, type, onClose, onSave }: AddSheetProps)
   const [date, setDate] = useState(todayISO())
   const [saving, setSaving] = useState(false)
 
-  // Al abrir: estado limpio y respetando el tipo pulsado.
+  // Al abrir: pre-rellena si es edición, o estado limpio respetando el tipo pulsado.
   useEffect(() => {
     if (!open) return
-    setKind(type)
-    setAmount('')
-    setCategoryId(null)
-    setNote('')
-    setDate(todayISO())
     setSaving(false)
-  }, [open, type])
+    if (editing) {
+      setKind(editing.type)
+      setAmount(String(editing.amount).replace('.', ','))
+      setCategoryId(editing.category)
+      setNote(editing.description)
+      setDate(editing.date)
+    } else {
+      setKind(type)
+      setAmount('')
+      setCategoryId(null)
+      setNote('')
+      setDate(todayISO())
+    }
+  }, [open, type, editing])
 
   function parseAmount(): number {
     const n = parseFloat(amount.replace(',', '.'))
@@ -143,7 +153,7 @@ export default function AddSheet({ open, type, onClose, onSave }: AddSheetProps)
             isIncome ? 'bg-green' : 'bg-red'
           } ${invalid ? 'opacity-40' : ''}`}
         >
-          {isIncome ? 'Guardar ingreso' : 'Guardar gasto'}
+          {editing ? 'Guardar cambios' : isIncome ? 'Guardar ingreso' : 'Guardar gasto'}
         </button>
       </div>
     </Sheet>
